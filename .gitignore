@@ -27,3 +27,8 @@ replay_pid*
 .env
 target/
 logs/
+
+
+# Local tools (DO NOT COMMIT)
+apache-maven-3.9.6/
+jdk-17.0.10+7/
