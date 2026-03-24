@@ -7,6 +7,8 @@ import com.event.event.entity.EventStatus;
 import com.event.event.exception.ResourceNotFoundException;
 import com.event.event.exception.UnauthorizedException;
 import com.event.event.repository.EventRepository;
+import com.event.event.repository.VenueRepository;
+import com.event.event.entity.Venue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ import java.util.stream.Collectors;
 public class EventService {
 
     private final EventRepository eventRepository;
+    private final VenueRepository venueRepository;
 
     @Transactional
     public EventResponse createEvent(EventRequest request, String organizerEmail) {
@@ -27,7 +30,7 @@ public class EventService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .date(request.getDate())
-                .venue(request.getVenue())
+                .venue(resolveVenue(request.getVenue()))
                 .fee(request.getFee())
                 .capacity(request.getCapacity())
                 .availableSeats(request.getCapacity()) // Default to completely full upon generation
@@ -46,7 +49,7 @@ public class EventService {
         event.setName(request.getName());
         event.setDescription(request.getDescription());
         event.setDate(request.getDate());
-        event.setVenue(request.getVenue());
+        event.setVenue(resolveVenue(request.getVenue()));
         event.setFee(request.getFee());
 
         // Process capacity reallocation carefully
@@ -83,16 +86,37 @@ public class EventService {
     public List<EventResponse> getEvents(String name, Double minFee, Double maxFee, String venue) {
         return eventRepository.findAll().stream()
                 .filter(event -> name == null || event.getName().toLowerCase().contains(name.toLowerCase()))
-                .filter(event -> venue == null || event.getVenue().toLowerCase().contains(venue.toLowerCase()))
+                .filter(event -> venue == null || (event.getVenue() != null && event.getVenue().getName().toLowerCase().contains(venue.toLowerCase())))
                 .filter(event -> minFee == null || event.getFee() >= minFee)
                 .filter(event -> maxFee == null || event.getFee() <= maxFee)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    public EventResponse getEventById(Long id) {
+        return mapToResponse(getEvent(id));
+    }
+
     private Event getEvent(Long id) {
         return eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + id));
+    }
+
+    @Transactional
+    public void reserveSeat(Long eventId) {
+        Event event = getEvent(eventId);
+        if (event.getAvailableSeats() <= 0) {
+            throw new IllegalArgumentException("This event has no available seats remaining.");
+        }
+        event.setAvailableSeats(event.getAvailableSeats() - 1);
+        eventRepository.save(event); // Force dirty check to trigger optimistic lock version constraint
+    }
+
+    @Transactional
+    public void releaseSeat(Long eventId) {
+        Event event = getEvent(eventId);
+        event.setAvailableSeats(event.getAvailableSeats() + 1);
+        eventRepository.save(event);
     }
 
     private void validateOwnership(Event event, String organizerEmail) {
@@ -101,13 +125,21 @@ public class EventService {
         }
     }
 
+    private Venue resolveVenue(String venueName) {
+        if (venueName == null || venueName.trim().isEmpty()) {
+            return null;
+        }
+        return venueRepository.findByName(venueName)
+                .orElseGet(() -> venueRepository.save(Venue.builder().name(venueName).build()));
+    }
+
     private EventResponse mapToResponse(Event event) {
         return EventResponse.builder()
                 .id(event.getId())
                 .name(event.getName())
                 .description(event.getDescription())
                 .date(event.getDate())
-                .venue(event.getVenue())
+                .venue(event.getVenue() != null ? event.getVenue().getName() : null)
                 .fee(event.getFee())
                 .capacity(event.getCapacity())
                 .availableSeats(event.getAvailableSeats())

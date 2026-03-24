@@ -8,7 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "events")
+@Table(name = "events_v2")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,8 +29,13 @@ public class Event {
     @Column(nullable = false)
     private LocalDateTime date;
 
-    @Column(nullable = false)
-    private String venue;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "venue_id")
+    private Venue venue;
+
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "category_id")
+    private EventCategory category;
 
     @Column(nullable = false)
     private Double fee;
@@ -54,4 +59,7 @@ public class Event {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Version
+    private Long version;
 }
