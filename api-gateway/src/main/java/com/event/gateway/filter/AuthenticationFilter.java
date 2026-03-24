@@ -1,6 +1,5 @@
 package com.event.gateway.filter;
 
-import com.event.gateway.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -15,8 +14,7 @@ import reactor.core.publisher.Mono;
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+
 
     public AuthenticationFilter() {
         super(Config.class);
@@ -32,30 +30,11 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             }
 
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                authHeader = authHeader.substring(7);
-            } else {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 return onError(exchange, "Invalid authorization header format", HttpStatus.UNAUTHORIZED);
             }
 
-            try {
-                jwtUtil.validateToken(authHeader);
-                
-                String email = jwtUtil.extractEmail(authHeader);
-                String role = jwtUtil.extractRole(authHeader);
-
-                // Propagate user identity to downstream microservices
-                request = exchange.getRequest()
-                        .mutate()
-                        .header("X-User-Email", email)
-                        .header("X-User-Role", role)
-                        .build();
-
-            } catch (Exception e) {
-                return onError(exchange, "Invalid JWT token", HttpStatus.UNAUTHORIZED);
-            }
-
-            return chain.filter(exchange.mutate().request(request).build());
+            return chain.filter(exchange);
         };
     }
 
