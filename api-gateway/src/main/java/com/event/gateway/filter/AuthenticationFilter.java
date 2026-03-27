@@ -16,6 +16,9 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
 
 
+    @Autowired
+    private com.event.gateway.util.JwtUtil jwtUtil;
+
     public AuthenticationFilter() {
         super(Config.class);
     }
@@ -32,6 +35,13 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 return onError(exchange, "Invalid authorization header format", HttpStatus.UNAUTHORIZED);
+            }
+
+            try {
+                String token = authHeader.substring(7);
+                jwtUtil.validateToken(token);
+            } catch (Exception e) {
+                return onError(exchange, "Unauthorized access to application", HttpStatus.UNAUTHORIZED);
             }
 
             return chain.filter(exchange);

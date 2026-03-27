@@ -2,23 +2,32 @@ version: '3.8'
 
 services:
   eureka-server:
-    build: ./eureka-server
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
     ports:
       - "8761:8761"
     networks:
       - event-net
 
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
     ports:
       - "8080:8080"
     environment:
-      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - event-net
+    depends_on:
+      - eureka-server
 
   auth-service:
-    build: ./auth-service
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
     ports:
       - "8081:8081"
     environment:
@@ -26,33 +35,48 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
-      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
     networks:
       - event-net
+    depends_on:
+      - eureka-server
 
   event-service:
-    build: ./event-service
+    build:
+      context: .
+      dockerfile: event-service/Dockerfile
     ports:
       - "8082:8082"
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - event-net
+    depends_on:
+      - eureka-server
 
   registration-service:
-    build: ./registration-service
+    build:
+      context: .
+      dockerfile: registration-service/Dockerfile
     ports:
       - "8083:8083"
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
     networks:
       - event-net
+    depends_on:
+      - eureka-server
 
 networks:
   event-net:
