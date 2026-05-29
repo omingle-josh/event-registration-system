@@ -5,6 +5,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,20 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
+            String requestPath = request.getURI().getPath();
+
+            // Allow CORS preflight and public event reads through the gateway.
+            if (HttpMethod.OPTIONS.equals(request.getMethod())
+                    || requestPath.startsWith("/auth/")
+                    || requestPath.startsWith("/oauth2/")
+                    || requestPath.startsWith("/login/oauth2/")
+                    || requestPath.startsWith("/webhooks/")
+                    || (HttpMethod.GET.equals(request.getMethod())
+                    && requestPath.startsWith("/events")
+                    && !requestPath.startsWith("/events/admin")
+                    && !requestPath.startsWith("/events/organizer"))) {
+                return chain.filter(exchange);
+            }
 
             if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
                 return onError(exchange, "Missing authorization header", HttpStatus.UNAUTHORIZED);

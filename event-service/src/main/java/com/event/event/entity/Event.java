@@ -53,6 +53,9 @@ public class Event {
     @Column(name = "organizer_email", nullable = false)
     private String organizerEmail;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

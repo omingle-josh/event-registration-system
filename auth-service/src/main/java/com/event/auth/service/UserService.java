@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -46,6 +48,16 @@ public class UserService {
 
         user = userRepository.save(user);
         return mapToResponse(user);
+    }
+
+    public List<UserResponse> listUsersByRole(Role role) {
+        return userRepository.findByRole(role).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public long countByRole(Role role) {
+        return userRepository.countByRole(role);
     }
 
     private User getUserByEmail(String email) {

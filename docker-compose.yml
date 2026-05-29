@@ -30,12 +30,17 @@ services:
       dockerfile: auth-service/Dockerfile
     ports:
       - "8081:8081"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     networks:
       - event-net
     depends_on:
@@ -47,12 +52,17 @@ services:
       dockerfile: event-service/Dockerfile
     ports:
       - "8082:8082"
+      - "9092:9092"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - JWT_SECRET=${JWT_SECRET}
+      - GROQ_API_KEY=${GROQ_API_KEY}
     networks:
       - event-net
     depends_on:
@@ -64,6 +74,9 @@ services:
       dockerfile: registration-service/Dockerfile
     ports:
       - "8083:8083"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
@@ -77,6 +90,29 @@ services:
       - event-net
     depends_on:
       - eureka-server
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - event-net
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - event-net
+    depends_on:
+      - prometheus
 
 networks:
   event-net:
