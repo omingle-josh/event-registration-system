@@ -18,4 +18,5 @@ public class EventResponse {
     private Integer availableSeats;
     private EventStatus status;
     private String organizerEmail;
+    private String imageUrl;
 }

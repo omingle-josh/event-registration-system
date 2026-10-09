@@ -30,4 +30,6 @@ public class EventRequest {
     @NotNull(message = "Capacity is required")
     @Min(value = 1, message = "Capacity must be at least 1")
     private Integer capacity;
+
+    private String imageUrl;
 }

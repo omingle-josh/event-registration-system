@@ -11,6 +11,10 @@ public class RegistrationResponse {
     private Long eventId;
     private String userEmail;
     private RegistrationStatus status;
+
+    // Present only for fee=0 (instant confirmation) or after webhook receipt creation.
+    private Long receiptId;
+    private String receiptNumber;
     
     // Razorpay Checkout Payload
     private String razorpayOrderId;

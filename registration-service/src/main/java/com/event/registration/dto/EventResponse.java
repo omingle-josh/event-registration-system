@@ -10,6 +10,7 @@ public class EventResponse {
     private String name;
     private LocalDateTime date;
     private String venue;
+    private String organizerEmail;
     private String status;
     private Integer availableSeats;
     private Double fee;

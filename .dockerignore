@@ -1,0 +1,12 @@
+# Build context optimizations
+node_modules/
+target/
+*.log
+.git/
+.idea/
+.vscode/
+**/target/
+**/node_modules/
+frontend/dist/
+frontend/build/
+.env

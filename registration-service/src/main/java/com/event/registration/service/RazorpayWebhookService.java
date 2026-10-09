@@ -1,6 +1,8 @@
 package com.event.registration.service;
 
 import com.event.registration.entity.*;
+import com.event.registration.dto.EmailEvent;
+import com.event.registration.dto.EventResponse;
 import com.event.registration.exception.UnauthorizedException;
 import com.event.registration.repository.PaymentRepository;
 import com.event.registration.repository.ReceiptRepository;
@@ -31,6 +33,7 @@ public class RazorpayWebhookService {
     private final ReceiptRepository receiptRepository;
     private final ObjectMapper objectMapper;
     private final EventServiceClient eventServiceClient;
+    private final EmailService emailService;
 
     @Transactional
     public void processWebhook(String signature, String payload) {
@@ -63,11 +66,24 @@ public class RazorpayWebhookService {
         Payment payment = paymentRepository.findByRegistrationId(registrationId).orElse(null);
         if (payment == null || payment.getPaymentStatus() == PaymentStatus.SUCCESS) return; // Idempotent short-circuit
 
+        Registration registration = registrationRepository.findById(registrationId).orElseThrow();
+
+        // Reserve the seat only when payment is actually captured.
+        try {
+            eventServiceClient.reserveSeat(registration.getEventId());
+        } catch (Exception e) {
+            // If we cannot reserve a seat at this point, mark the registration as cancelled
+            // and treat payment as failed from our system's perspective.
+            registration.setStatus(RegistrationStatus.CANCELLED);
+            payment.setPaymentStatus(PaymentStatus.FAILED);
+            payment.setTransactionRef(transactionRef);
+            payment.setPaidAt(LocalDateTime.now());
+            return;
+        }
+
         payment.setPaymentStatus(PaymentStatus.SUCCESS);
         payment.setTransactionRef(transactionRef);
         payment.setPaidAt(LocalDateTime.now());
-
-        Registration registration = registrationRepository.findById(registrationId).orElseThrow();
         registration.setStatus(RegistrationStatus.CONFIRMED);
         // 3. Freeze a historic Receipt Snapshot
         String receiptCode = "REC-" + LocalDateTime.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -77,6 +93,25 @@ public class RazorpayWebhookService {
                 .build();
                 
         receiptRepository.save(receipt);
+
+        try {
+            EventResponse eventResponse = eventServiceClient.getEventById(registration.getEventId());
+            EmailEvent emailEvent = EmailEvent.builder()
+                    .userEmail(registration.getUserEmail())
+                    .registrationId(registration.getId())
+                    .eventName(eventResponse.getName())
+                    .eventDate(eventResponse.getDate())
+                    .eventVenue(eventResponse.getVenue())
+                    .amount(payment.getAmount().doubleValue())
+                    .receiptNumber(receipt.getReceiptNumber())
+                    .transactionRef(payment.getTransactionRef())
+                    .paymentMethod(payment.getPaymentMethod().name())
+                    .build();
+            emailService.sendBookingConfirmation(emailEvent);
+        } catch (Exception e) {
+            // Log but don't fail the transaction if getting event details for email fails
+             System.err.println("Failed to build email event: " + e.getMessage());
+        }
     }
 
     private void handlePaymentFailed(Long registrationId, String transactionRef) {
@@ -88,11 +123,6 @@ public class RazorpayWebhookService {
             Registration registration = registrationRepository.findById(registrationId).orElse(null);
             if (registration != null && registration.getStatus() != RegistrationStatus.CANCELLED) {
                 registration.setStatus(RegistrationStatus.CANCELLED);
-                try {
-                    eventServiceClient.releaseSeat(registration.getEventId());
-                } catch (Exception e) {
-                    System.err.println("CRITICAL: Failed to release the natively locked seat for cancelled registration: " + registrationId);
-                }
             }
         }
     }

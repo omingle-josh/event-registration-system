@@ -40,4 +40,5 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleOptimisticLocking(ObjectOptimisticLockingFailureException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "A race condition occurred. The event capacity was just altered by another transaction. Please try again."));
     }
+
 }

@@ -35,11 +35,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
         final String jwt = authHeader.substring(7);
         try {
-            System.out.println("--> [JWT DEBUG] Processing Token: " + jwt.substring(0, 15) + "...");
             if (jwtUtil.validateToken(jwt) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 String email = jwtUtil.extractEmail(jwt);
                 String role = jwtUtil.extractRole(jwt);
-                System.out.println("--> [JWT DEBUG] Successfully parsed Subject: " + email + ", Claim Role: " + role);
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         email, 
@@ -49,7 +47,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-                System.out.println("--> [JWT DEBUG] Authentication context successfully wired!");
             }
         } catch (Exception e) {
             System.err.println("--> [JWT DEBUG] Exception caught during validation: " + e.getMessage());

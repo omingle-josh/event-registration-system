@@ -11,8 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -67,14 +70,65 @@ public class EventController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Double minFee,
             @RequestParam(required = false) Double maxFee,
-            @RequestParam(required = false) String venue) {
+            @RequestParam(required = false) String venue,
+            @RequestParam(required = false) Integer limit) {
             
-        return ResponseEntity.ok(eventService.getEvents(name, minFee, maxFee, venue));
+        return ResponseEntity.ok(eventService.getEvents(name, minFee, maxFee, venue, limit));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<EventResponse> getEvent(@PathVariable Long id) {
         return ResponseEntity.ok(eventService.getEventById(id));
+    }
+
+    @GetMapping("/organizer/me")
+    @PreAuthorize("hasRole('ORGANIZER') or hasRole('ADMIN')")
+    public ResponseEntity<Page<EventResponse>> listMyEvents(
+            @RequestParam(required = false) EventStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal String userEmail) {
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, safeSize, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "date"));
+        return ResponseEntity.ok(eventService.getOrganizerEvents(userEmail, status, pageable));
+    }
+
+    @GetMapping("/organizer/me/count")
+    @PreAuthorize("hasRole('ORGANIZER') or hasRole('ADMIN')")
+    public ResponseEntity<Long> countMyEvents(
+            @RequestParam(required = false) EventStatus status,
+            @AuthenticationPrincipal String userEmail) {
+        return ResponseEntity.ok(eventService.countOrganizerEvents(userEmail, status));
+    }
+
+    /**
+     * Bulk fetch for frontend performance (reduces N network round-trips).
+     * Accepts ids as a comma-separated string: ?ids=1,2,3
+     */
+    @GetMapping("/bulk")
+    public ResponseEntity<List<EventResponse>> getEventsBulk(@RequestParam("ids") String ids) {
+        if (ids == null || ids.trim().isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        try {
+            // Basic parsing + validation. Backend also ensures max to prevent abuse.
+            List<Long> parsedIds = Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .distinct()
+                    .map(Long::valueOf)
+                    .toList();
+
+            int maxIds = 200;
+            if (parsedIds.size() > maxIds) {
+                return ResponseEntity.badRequest().body(List.of());
+            }
+
+            return ResponseEntity.ok(eventService.getEventsByIds(parsedIds));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
     }
 
     @PostMapping("/{id}/reserve-seat")
