@@ -53,9 +53,6 @@ services:
     ports:
       - "8082:8082"
       - "9092:9092"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     environment:
       - DB_URL=${DB_URL}
       - DB_USERNAME=${DB_USERNAME}
