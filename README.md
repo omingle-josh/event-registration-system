@@ -37,29 +37,9 @@ Downstream `JwtFilter`s rigorously evaluate the unpacked JWT scopes logically ma
 
 ---
 
-## 🚀 Quickstart via Docker Compose
+## Setup
 
-This platform is container-native. You do not explicitly need Java or Maven installed on your host OS. The multi-stage `Dockerfile` templates will automatically inject the parent POM context and natively compile the system isolated within Docker networks.
-
-### 1. Configure the Environment Nodes
-Clone the repository and duplicate the environment template:
-```bash
-cp .env.example .env
-```
-Populate `.env` with your active PostgreSQL URIs and Razorpay cryptographic secrets.
-
-### 2. Orchestrate the Cluster
-Initiate the dynamic build sequence from the repository root:
-```bash
-docker-compose up --build -d
-```
-Docker will boot the registry, compile the JARs, and bridge the internal networks.
-
-### 3. Verify Health
-Wait 60-90 seconds for all Spring applications to push initialization telemetry to Eureka:
-```bash
-docker-compose logs -f
-```
+Clone-and-run steps, environment variables, database schemas, Docker and local Maven startup, and the frontend are in [SETUP.md](SETUP.md).
 
 ---
 

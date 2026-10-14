@@ -41,6 +41,7 @@ build/
 *.log
 .env
 .env.*
+!.env.example
 
 ### Standalone Build Tools ###
 jdk-*/
